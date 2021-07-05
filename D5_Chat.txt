@@ -1,0 +1,45 @@
+09:02:37	 From  Harry : https://docs.ansible.com/ansible/latest/user_guide/playbooks_variables.html#accessing-information-about-other-hosts-with-magic-variables
+09:05:42	 From  Celestine Ndip : good
+09:05:42	 From  Louis : that is good now
+09:06:02	 From  Raphael : good morning everyone
+09:06:10	 From  arsene : just quick question how more sessions are we have?
+09:07:09	 From  Raphael : please give me permission to record
+09:08:05	 From  arsene : ok thanks
+09:35:03	 From  Louis : I have a question
+09:56:40	 From  Louis : this is part of the program for the exam
+09:57:08	 From  Celestine Ndip : no bro, just concentrate on the lectures and you will get there 
+09:57:31	 From  Celestine Ndip : that is not a relevant question, sorry!
+09:59:06	 From  Raphael : getting a certificate is one thing, what its important is getting the hands on
+09:59:23	 From  Raphael : this is hands on 
+09:59:37	 From  Raphael : and exam prep
+10:00:43	 From  Celestine Ndip : man! the expectations are high out there, just stay focused and you will get there.
+10:01:20	 From  Celestine Ndip : lets continue please
+10:04:03	 From  Louis : if we master everything Harry is doing , the exam will be easyyyyyyyyyyy
+10:24:01	 From  Louis : try this 
+10:24:03	 From  Louis : for us 
+10:24:08	 From  Louis : sending the email and reboot sever
+10:24:29	 From  Louis : ok
+10:24:32	 From  Louis : great
+10:24:53	 From  Simplice Tchinde : can you please put the conf file the way it was and paste it in the chat box please?
+10:25:11	 From  Simplice Tchinde : handler
+10:25:25	 From  Harry : [devops@servera project]$ cat  handlers.yml---- name: play for handlers  hosts: webserver  vars:    pkg: httpd    srv: httpd    rule: http  #handlers:  tasks:    - name: installing {{ pkg }} package      yum:        name: "{{ pkg }}"        state: present    - name: starting {{ srv }} service      service:        name: "{{ srv }}"        state: started
+10:25:35	 From  Simplice Tchinde : no it  got modified
+10:25:41	 From  Harry :     - name: allow {{ rule }} in firewalld      firewalld:        service: "{{ rule }}"        state: enabled    - name: creating additional document root html file      copy:        content: "<h1>This is Custom Apache Server on {{ ansible_fqdn }}</h1>"        dest: /var/www/html/ansible.html    - name: making confiugration changes      replace:        dest: /etc/httpd/conf/httpd.conf        regexp: "index.html"        replace: "ansible.html"      notify: restart apache          # - send email          # - name: restart apache          # service:  handlers:    - name: restart apache      service:        name: "{{ srv }}"        state: restarted
+10:26:15	 From  Simplice Tchinde : great
+10:35:13	 From  Louis : it s not clear
+10:35:21	 From  Louis : voice is not clear please
+10:35:24	 From  Harry : am I audible 
+10:35:24	 From  Harry : ?
+10:35:24	 From  Nicefemi : can you pleae repeat tha?
+10:35:33	 From  Nicefemi : yes
+10:35:36	 From  Louis : now it s good
+10:35:42	 From  Celestine Ndip : ok
+10:41:23	 From  Simplice Tchinde : what you mean by internet issue
+10:41:36	 From  Simplice Tchinde : I can ping google.com
+10:42:17	 From  Simplice Tchinde : ok
+10:46:49	 From  Simplice Tchinde : yeah there's no internet even on my end
+10:57:12	 From  Harry : any questions ?
+11:04:49	 From  Louis : please share the playbook
+11:05:16	 From  Harry : thanks all
+11:05:20	 From  Louis : that was a great infroamtive session 
+11:05:23	 From  Louis : thank you harry

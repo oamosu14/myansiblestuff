@@ -1,0 +1,53 @@
+---
+- name: playbook for variables
+  hosts: webserver
+  vars:
+    # variables     ( a-z | A-Z | 0-9 |  _ )
+    #eg.  pkg pkg1 pkg_1 ( correct )  1pkg 2pkg   _pkg ( incorrect )
+    web_pkg: httpd
+    web_srv: httpd
+    fw_pkg: firewalld
+    fw_srv: firewalld
+    fw_rule: http
+  tasks:
+    - name: installing {{ web_pkg }} rpm
+      yum:
+        name: "{{ web_pkg }}"
+        state: latest
+
+    - name: starting {{ web_srv }} service
+      service:
+        name: "{{ web_srv }}"
+        state: started
+        enabled: true
+
+    - name: installing {{ fw_pkg }} rpm
+      yum:
+        name: "{{ fw_pkg }}"
+        state: latest
+
+    - name: starting {{ fw_srv }} rpm
+      service:
+        name: "{{ fw_srv }}"
+        state: started - name: starting {{ fw_srv }} rpm
+      service:
+        name: "{{ fw_srv }}"
+        state: started
+        enabled: true
+
+    - name: allow {{ fw_rule }} protocol in firewall
+      firewalld:
+        service: "{{ fw_rule }}"
+        #port: 80/tcp
+        state: enabled
+        permanent: true
+        immediate: true
+
+    - name: copy index.html file
+      copy:
+        src: index.html
+        dest: /var/www/html/index.html
+...
+
+=========================================================================
+

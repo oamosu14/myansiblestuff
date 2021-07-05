@@ -1,0 +1,207 @@
+#Day2 RHCEv8 ( Ansible ):
+
+
+[devops@servera project]$ cat ansible.cfg
+[defaults]
+inventory=/home/devops/project/hosts
+remote_user=devops
+ask_pass=False
+
+[privilege_escalation]
+become=True
+become_method=sudo
+become_user=root
+become_ask_pass=False
+
+
+###############################
+
+[devops@servera project]$ cat hosts
+[webserver]
+serverb.example.com
+
+[dbserver]
+serverc.example.com
+
+[servers:children]
+webserver
+dbserver
+
+
+################################
+[devops@servera project]$ cat playbook.yml
+---
+# Play Scope
+- name: first playbook of ansible
+  hosts: webserver
+  tasks:
+    # Task Scope
+    - name: first task is to install apache rpm
+      yum:
+        name: httpd
+        state: installed
+
+    - name: second task to start apache service
+      service:
+        name: httpd
+        state: started
+
+...
+
+
+
+###########################
+
+[devops@servera project]$ cat devops
+devops   ALL=(ALL)   NOPASSWD: ALL
+
+###########################
+
+Command History:
+
+1  cd project/
+    2  ansible all -m ping
+    3  cd
+    4  ping servera
+    5  ping serverb
+    6  ping serverc
+    7  cd project/
+    8  ls
+    9  ansible all -a id
+   10  ls
+   11  hostname
+   12  pwd
+   13  ls
+   14  #Ad-HOC Commands > install package | start service > taks single time exec.
+   15  #ansible  <host> -m <Module>  -a <Argument>
+   16  ansible all --list-hosts
+   17  ansible all -m yum  -a  "name=httpd state=installed"
+   18  #Green  : Success ( OK )
+   19  #Red    : Errors
+   20  cat ansible.cfg
+   21  #ssh serverb | serverc >> sudo yum  install  httpd
+   22  vim ansible.cfg
+   23  clear
+   24  whoami
+   25  yum install httpd -y
+   26  sudo yum install httpd -y
+   27  cat ansible.cfg
+   28  ansible all -m yum  -a  "name=httpd state=installed"
+ 29  clear
+   30  ansible all -m  command -a id
+   31  cat ansible.cfg
+   32  vim ansible.cfg
+   33  ansible all -m  command -a id
+   34  vim /etc/ansible/ansible.cfg
+   35  clear
+   36  cat ansible.cfg
+   37  ansible all -m yum -a "name=httpd state=removed"
+   38  cat ansible.cfg
+   39  ansible all -m yum -a "name=httpd state=removed"   --become
+   40  cat ansible.cfg
+   41  #ansible all -m yum -a "name=httpd state=removed"   --become
+   42  ansible all -m ping
+   43  ssh serverb
+   44  #Password less logins
+   45  #Generate Key-pairs
+   46  #Generate Key-pairs on your controller node
+   47  #Copy your public key from controller to all managed nodes
+   48  ssh-keygen
+   49  ssh-copy-id devops@serverb
+   50  ssh devops@serverb
+   51  ssh-copy-id devops@serverc
+   52   ssh 'devops@serverc'
+   53  #ssh > should not ask the password
+   54  vim ansible.cfg
+   55  ansible all -m ping
+   56  clear
+   57  cat ansible.cfg
+   58  #ansible all -m ping
+ 59  sudo yum install vim
+   60  sudo vi /etc/sudoers.d/devops
+   61  sudo yum install httpd
+   62  sudo cat  /etc/sudoers.d/devops
+   63  #servera
+   64  #serverb
+   65  #serverc
+   66  ansible all -m copy  -a "src=/etc/sudoers.d/devops  dest=/etc/sudoers.d/devops" --become
+   67  ansible all -m copy  -a "src=/etc/sudoers.d/devops dest=/etc/sudoers.d/devops" --become
+   68  sudo cat /etc/sudoers.d/devops
+   69  ansible all -m copy  -a "src=/etc/sudoers.d/devops dest=/etc/sudoers.d/" --become
+   70  cat /etc/sudoers.d/devops
+   71  #ansible all -m copy  -a "src=/etc/sudoers.d/devops dest=/etc/sudoers.d/" --become
+   72  sudo /etc/sudoers.d/devops .
+   73  sudo cp /etc/sudoers.d/devops .
+   74  ls
+   75  ansible all -m copy  -a "src=devops dest=/etc/sudoers.d/" --become
+   76  vim ansible.cfg
+   77  #ansible all -m copy  -a "src=/etc/sudoers.d/devops dest=/etc/sudoers.d/" --become
+   78  cat /etc/sudoers.d/devops
+   79  ls
+   80  cat devops
+   81  #ansible all -m copy  -a "src=devops dest=/etc/sudoers.d/" --become
+   82  #copy module  :
+   83  #src: local path from controller
+   84  #dest: remote path of manage nodes
+   85  ls
+   86  ansible all "cat /etc/sudoers.d/devops" --become
+   87  ansible all -m command  -a  "cat /etc/sudoers.d/devops" --become
+   88  cat ansible.cfg
+ 89  vim ansible.cfg
+   90  #ansible all -m command  -a  "cat /etc/sudoers.d/devops" --become
+   91  ls
+   92  cat ansible.cfg
+   93  ansible all -m command  -a  "cat /etc/sudoers.d/devops"
+   94  vim hosts
+   95  vim /etc/ansible/hosts
+   96  vim hosts
+   97  ansible  webserver  --list-hosts
+   98  ansible  dbserver  --list-hosts
+   99  ansible  servers  --list-hosts
+  100  cat hosts
+  101  #ansible dbserver  -m  yum  -a  "name=mariadb  state=installed | removed | latest | present | absent
+  102  ansible-doc  -l
+  103  ansible-doc  -l  | grep win
+  104  ansible-doc  -l  | grep yum
+  105  ansible-doc  -l  | grep dnf
+  106  ansible-doc  -l  | grep apt
+  107  ansible-doc  -l  | grep vmware
+  108  ##ansible dbserver  -m  yum  -a  "name=mariadb  state=installed | removed | latest | present | absent
+  109  ansible-doc  -l  | grep yum
+  110  ansible-doc  yum
+  111  history
+  112  #inventory
+  113  #ansible.cfg
+  114  #ad-hoc command
+  115  #playbook
+  116  pwd
+  117  ls
+  118  vim playbook.yml
+ 119  ansible-playbook  playbook.yml   --syntax-check
+  120  vim playbook.yml
+  121  ansible-playbook  playbook.yml   --syntax-check
+  122  vim playbook.yml
+  123  ansible-playbook  playbook.yml   --syntax-check
+  124  ansible-playbook  playbook.yml
+  125  #yellow : made some changes ( changed )
+  126  #green  : OK  ( NO Change )
+  127  #Red    : Failed
+  128  #hosts: webserver
+  129  ansible-playbook  playbook.yml
+  130  #Idempotent : Nature
+  131  cat playbook.yml
+  132  #Ansible is Idempotent
+  133  ansible  webserver   -m  command  -a  "rpm  -q   httpd"
+  134  ansible  webserver   -m  command  -a  "systemctl  status httpd"
+  135  cat playbook.yml
+  136  #RHCEv8 > Ansible
+  137  vim playbook.yml
+  138  history
+  139  clear
+  140  cat hosts
+  141  cat playbook.yml
+  142  cat devops
+  143  cat playbook.yml
+  144  ansible-playbook  playbook.yml
+  145  vim playbook.yml
+

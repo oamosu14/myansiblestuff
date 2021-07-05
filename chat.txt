@@ -1,0 +1,19 @@
+09:01:44	 From  Louis : yes
+09:01:56	 From  arsene : yes
+09:04:37	 From  arsene : please Harry can you check the volume on your side
+09:06:22	 From  Harry : how about now ?
+09:06:37	 From  arsene : same
+09:06:57	 From  Louis : yes
+09:07:08	 From  Celestine Ndip : clear but not the best
+09:42:44	 From  Harry : https://raw.githubusercontent.com/ansible/ansible/devel/contrib/inventory/ec2.py
+09:43:46	 From  Harry : https://github.com/ansible/ansible/tree/devel/contrib/inventory
+09:44:00	 From  Harry : any question ?
+09:47:22	 From  Harry : https://docs.ansible.com/ansible/latest/dev_guide/developing_inventory.html#developing-inventory
+09:54:56	 From  Celestine Ndip : does forks value have a max ?@harry 
+10:03:05	 From  Louis : could you please write a playbook for this example serial with the webserver
+10:03:06	 From  Louis : ?
+10:09:51	 From  Louis : can we put a timeframe before the second host starts executed his rasks?
+10:30:39	 From  Femmie : I think this is the same function as roles
+10:43:55	 From  Harry : any questions ?
+10:53:06	 From  Harry : thanks all
+10:53:22	 From  Femmie : thanks harry

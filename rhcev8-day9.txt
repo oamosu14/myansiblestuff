@@ -1,0 +1,337 @@
+
+
+#Day9
+
+#Playbooks:
+
+[devops@servera project]$ cat troubleshoot.yml
+---
+- hosts: all
+  tasks:
+     - name: print hello message
+       debug:
+         msg: "Hello from Ansbile"
+
+     - yum: name=httpd state=absent
+       when: inventory_hostname in groups['webserver']
+	   
+
+
+	   
+[devops@servera project]$ cat ansible.cfg
+[defaults]
+inventory=/home/devops/project/hosts
+#inventory=/home/devops/project/dynamic
+remote_user=devops
+ask_pass=False
+forks=5
+roles_path=/home/devops/project/roles:/usr/share/ansible/roles
+log_path=./logs/ansible.log
+host_key_checking=false
+
+[privilege_escalation]
+become=True
+become_method=sudo
+become_user=root
+become_ask_pass=False
+
+
+
+
+
+
+
+[devops@servera project]$ cat package_facts.yml
+---
+- name: play for package facts
+  hosts: webserver
+  tasks:
+     - name: run package facts module
+       package_facts:
+          manager: auto
+
+          # - name: print package facts
+       # debug:
+               #   var: ansible_facts.packages
+
+
+     - name: updating apache package if it is already installed
+       yum:
+         name: httpd
+         state: latest
+       when: "'httpd' in ansible_facts.packages"
+
+
+
+
+
+[devops@servera project]$ cat yum-repository.yml
+---
+- name: play for repository
+  hosts: all
+  tasks:
+    - name: adding a new repo
+      yum_repository:
+         name: extra
+         description: "Extra Package for RHEL8"
+         baseurl: http://servera.example.com/repos/iso/BaseOS
+         enabled: true
+         gpgcheck: yes
+         file: extra     #/etc/yum.repos.d/extra.repo
+         gpgkey: http://servera.example.com/repos/iso/RPM-GPG-KEY-redhat-release
+
+    - name: adding gpgkey manually
+      rpm_key:
+         key:  http://servera.example.com/repos/iso/RPM-GPG-KEY-redhat-release
+         state: present
+
+
+
+[devops@servera project]$ cat redhat-subscribed-repo.yml
+---
+- name: sample play to register redhat boxes
+  hosts: all
+  tasks:
+    - name: Same as above but subscribe to a specific pool by ID.
+      redhat_subscription:
+        state: present
+        username: joe_user
+        password: somepass
+        pool_ids: 0123456789abcdef0123456789abcdef
+
+   - name: Disable all repositories except rhel-7-server-rpms
+     rhsm_repository:
+       name: rhel-7-server-rpms
+       state: enabled
+
+   - name: registering system with redhat sattelite
+     redhat_subscription:
+        state: present
+        server_hostname: satellite.example.com
+        server_insecure: true
+        username: sat_user
+        password: sat_pass
+        pool_ids: 20039390890449349084832493243890lkdskfjdskl
+
+
+
+
+[devops@servera project]$ cat user-keys.yml
+---
+- name: play for user management
+  hosts: all,localhost
+  vars:
+    user_pass: redhat
+  tasks:
+     - name: adding a user with ssh keys
+       user:
+         name: alexa
+         state: present
+         password: "{{ user_pass | password_hash('sha512') }}"
+         groups: wheel
+         generate_ssh_key: true
+         #   ssh_key_bits: 2048
+         #ssh_key_file: /home/alexa/.ssh/alexa_rsa
+         uid: 1110
+
+
+- name: play to copy ssh public key from controller to all manage nodes
+  hosts: all
+  remote_user: alexa
+  become: false
+  tasks:
+    - name: generating the keys on controller
+      openssh_keypair:
+         path: /home/alexa/.ssh/id_rsa
+         force: true
+         state: present
+      delegate_to: localhost
+
+      #    - name: copy public key to project dir
+      #copy:
+      #  src: /home/alexa/.ssh/id_rsa.pub
+      #  dest: /home/devops/project
+      #  delegate_to: localhost
+
+    - name: creating ssh dir in manage node
+      file:
+         path: /home/alexa/.ssh
+         state: directory
+         owner: alexa
+         group: alexa
+         mode: 0700
+
+    - name: copy public key from controller to manage hosts
+      authorized_key:
+         user: alexa
+         state: present
+         key: "{{ lookup('file', '/home/alexa/.ssh/id_rsa.pub') }}"
+
+
+
+
+
+#Command History:
+
+1025  vim ansible.cfg
+ 1026  touch /var/log/hello
+ 1027  #root
+ 1028  vim ansible.cfg
+ 1029  mkdir logs
+ 1030  ansible all -m commad -a "id"
+ 1031  ansible all -m command -a "id"
+ 1032  ls logs
+ 1033  cat  logs/ansible.log
+ 1034  #Troubleshooting >> log files
+ 1035  #as such there is not any service | daemon for ansible
+ 1036  #tricks
+ 1037  #debug mode:
+ 1038  #levels:
+ 1039  #1.   -v    :  std/output
+ 1040  #2.   -vv   :  std/input|output
+ 1041  #3.   -vvv  :  connection related information+std/output/input
+ 1042  #4.   -vvvv :  connection info + std-output/input + module related info
+ 1043  ls
+ 1044  vim troubleshoot.yml
+ 1045  ansible-playbook  troubleshoot.yml -v
+ 1046  ansible-playbook  troubleshoot.yml -vv
+ 1047  ansible-playbook  troubleshoot.yml -vvvv | less
+ 1048  which
+ 1049  which ansible-playbook
+ 1050  cat troubleshoot.yml
+ 1051  crontab -e
+ 1052  cat /etc/crontab
+ 1053  #10.30 PM daily
+ 1054  #30  22   * * * /usr/bin/ansible-playbook  /home/devops/project/troubleshoot.yml
+ 1055  crontab -e
+ 1056  crontab -l
+ 1057  #ansible-playbook  troubleshoot.yml -vvvv | less
+ 1058  #debug | verbosity
+ 1059  more logs/ansible.log
+ 1060  #more logs/ansible.log
+ 1061  #logrotation  >> system task
+ 1062  #/var/log/
+ 1063  pwd
+ 1064  #logs
+ 1065  #verbosity
+ 1066  ls
+ 1067  ansible-playbook  mysql-role.yml --syntax-check
+ 1068  #ansible-playbook  mysql-role.yml --check ( dry-run )
+ 1069  vi troubleshoot.yml
+ 1070  ansible webserver -a "rpm -q httpd"
+ 1071  ansible-playbook --check troubleshoot.yml
+ 1072  ansible webserver -a "rpm -q httpd"
+ 1073  ansible-playbook  troubleshoot.yml
+ 1074  ansible webserver -a "rpm -q httpd"
+ 1075  #ansible-playbook  mysql-role.yml --check ( dry-run )
+ 1076  ansible-playbook  mysql-role.yml --step
+ 1077  ls
+ 1078  cat master-playbook.yml
+ 1079  ansible-playbook  master-playbook.yml --step
+ 1080  ansible-playbook  master-playbook.yml --list-all-tasks
+ 1081  ansible-playbook  master-playbook.yml --list-all-task
+ 1082  ansible-playbook  master-playbook.yml --list-tasks
+ 1083  ansible-playbook  mysql-role.yml --list-tasks
+ 1084  ansible-playbook  mysql-role.yml --start-at-task="harry.mysql : disable anonymous access to the DB"
+ 1085  #debug module >> arguments ( var=ansible_facts | msg="Hello message" )
+ 1086  #yum:
+ 1087  #dnf:
+ 1088  #ansible all -m yum -a "name=httpd state=present"
+ 1089  #el > debian ( apt ) ( zypper )
+ 1090  ansible-doc -l | grep apt
+ 1091  ansible-doc -l | grep zypper
+ 1092  ansible-doc -l | grep dns
+ 1093  ansible-doc -l | grep dnf
+ 1094  #rhel 8 >>  yumv4    >>> dnf
+ 1095  #-m dnf  -a "name=httpd state=absent"
+ 1096  ansible-doc -k
+ 1097  ansible-doc -l | grep package
+ 1098  #update package >> package_facts  >> package related info > setup ( facts )
+ 1099  vim package_facts.yml
+ 1100  ansible-playbook  package_facts.yml
+ 1101  vim package_facts.yml
+ 1102  ansible-playbook  package_facts.yml
+ 1103  vim package_facts.yml
+ 1104  ansible-playbook  package_facts.yml
+ 1105  vim package_facts.yml
+ 1106  ansible-playbook  package_facts.yml
+ 1107  vi package_facts.yml
+ 1108  ansible-playbook  package_facts.yml
+ 1109  ansible webserver -a "rpm -q httpd"
+ 1110  ansible webserver -m yum -a "name=httpd state=present"
+ 1111  ansible webserver -a "rpm -q httpd"
+ 1112  ansible-playbook  package_facts.yml
+ 1113  vim package_facts.yml
+ 1114  cat package_facts.yml
+ 1115  #package
+ 1116  #centos | fedora | rhel  > yum|dnf|rpm
+ 1117  #package:
+ 1118  ansible webserver -m package -a "name=httpd state=absent"
+ 1119  # ubuntu | centos | suse
+ 1120  #ansible webserver -m package -a "name=httpd state=absent" > httpd | apache2 | apache2
+ 1121  #ansbile  >> repository
+ 1122  cat /etc/yum.repos.d/ansible.repo
+ 1123  ansible-doc -l | grep yum
+ 1124  ansible-doc yum_repository
+ 1125  ssh serverb
+ 1126  #http://servera.example.com/repos/iso/BaseOS
+ 1127  vim yum-repository.yml
+ 1128  ansible-playbook --syntax-check yum-repository.yml
+ 1129  ansible-playbook  yum-repository.yml
+ 1130  #ansible all -m
+ 1131  #cloud | virt   ( Snapshots | Backup ) > update > rollback
+ 1132  #aws
+ 1133  #vmware
+ 1134  ansible-doc -l | grep vmware
+ 1135  ansible-doc -l | grep vmware | grep snap
+ 1136  ansible-doc -l | grep aws
+ 1137  ansible-doc -l | grep aws | grep snap
+ 1138  ansible all -a "cat /etc/yum.repos.d/extra.repo"
+ 1139  cat yum-repository.yml
+ 1140  ssh serverb
+ 1141  cat yum-repository.yml
+ 1142  ansible-doc -l | grep subs
+ 1143  #register your system and enable pool
+ 1144  #redhat_subsctiption :
+ 1145  #enable repo from redhat CDN ( subscription ) : rhsm_repository
+ 1146  #yum_repository : baseurl
+ 1147  #1\2
+ 1148  vim redhat-subscribed-repo.yml
+ 1149  vim user-keys.yml
+ 1150  ansible-playbook  user-keys.yml --syntax-check
+ 1151  vim user-keys.yml
+ 1152  ansible-playbook  user-keys.yml --syntax-check
+ 1153  ansible-playbook  user-keys.yml
+ 1154  vim user-keys.yml
+ 1155  ansible-playbook  user-keys.yml
+ 1156  vi user-keys.yml
+ 1157  cat hosts
+ 1158  ansible-playbook  user-keys.yml
+ 1159  vi user-keys.yml
+ 1160  ls /home/alexa/
+ 1161  sudo ls -a /home/alexa/
+ 1162  sudo ls -a /home/alexa/.s
+ 1163  sudo ls -a /home/alexa/.ssh
+ 1164  vi user-keys.yml
+ 1165  ansible-playbook  user-keys.yml
+ 1166  vi user-keys.yml
+ 1167  sudo ls /home/alexa/.ssh/id_rsa.pub
+ 1168  sudo cat  /home/alexa/.ssh/id_rsa.pub
+ 1169  ansible-playbook  user-keys.yml
+ 1170  ls
+ 1171  ls /home/alexa
+ 1172  vi user-keys.yml
+ 1173  ansible-playbook  user-keys.yml
+ 1174  sudo -i
+ 1175  vi user-keys.yml
+ 1176  ansible-playbook  user-keys.yml
+ 1177  vi user-keys.yml
+ 1178  vi /etc/ansible/ansible.cfg
+ 1179  vi ansible.cfg
+ 1180  ansible-playbook  --help | less
+ 1181  ls
+ 1182  ansible-playbook  user-keys.yml --ask-pass
+
+
+
+

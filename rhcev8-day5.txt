@@ -1,0 +1,253 @@
+#Day5
+
+[devops@servera project]$ tree
+.
+├── ansible.cfg
+├── conditions2.yml
+├── conditions.yml
+├── devops
+├── facts.yml
+├── group_vars
+│   └── webserver
+├── handlers.yml
+├── hosts
+├── host_vars
+│   └── serverb.example.com
+├── index.html
+├── loops.yml
+├── pass.yml
+├── playbook.yml
+├── reboot_and_mail_notification.yml
+├── users.yaml
+├── variables.yml
+├── vars.yml
+└── without_condition.yml
+
+2 directories, 18 files
+
+
+#Playbooks:
+
+[devops@servera project]$ cat conditions.yml
+---
+- name: play for conditional statement
+  hosts: all
+  become: true
+  vars:
+    supported_distros:
+      - Fedora
+      - CentOS
+      - RedHat
+  tasks:
+    - name: installing pkg if OS is RedHat
+      yum:
+        name: git
+        state: present
+     # when: ansible_distribution == "RedHat"
+      when: ansible_distribution in supported_distros
+
+
+        #- name: play for ubuntu systems
+        #  hosts: debian
+        # become: true
+        #  tasks:
+    - name: installing pkg if OS is Ubuntu
+      apt:
+        name: apache2
+        state: present
+      when: ansible_distribution == "Ubuntu"
+
+
+[devops@servera project]$ cat conditions2.yml
+---
+- name: play for condition 2
+  hosts: all
+  # - webserver
+  # - dbserver
+  #gather_facts: no
+  tasks:
+    - name: installing apache if node is from webserver group
+      yum:
+        name: httpd
+        state: latest
+      #when: ansible_fqdn in groups['webserver']
+      when: inventory_hostname in groups['webserver']  and ansible_distribution == "RedHat"  #serverb serverb.example.com serverb.local
+
+      #user defined variables
+      #dynamic variables ( facts )
+      #magic variables ( pre-defined / special variables )
+
+
+    - name: installing mysql if node is from dbserver group
+      yum:
+        name: mariadb-server
+        state: latest
+     #when: ansible_fqdn in groups['dbserver']
+      when: inventory_hostname in groups['dbserver'] or ansible_distribution == "Ubuntu"
+
+
+      #webserver : serverb.example.com
+      #dbserver  : serverc.example.com    "serverb.example.com serverc.example.com"
+
+
+[devops@servera project]$ cat handlers.yml
+---
+- name: play for handlers
+  hosts: webserver
+  vars:
+    pkg: httpd
+    srv: httpd
+    rule: http
+  #handlers:
+
+  tasks:
+    - name: installing {{ pkg }} package
+      yum:
+        name: "{{ pkg }}"
+        state: present
+
+    - name: starting {{ srv }} service
+      service:
+        name: "{{ srv }}"
+        state: started
+
+    - name: allow {{ rule }} in firewalld
+      firewalld:
+        service: "{{ rule }}"
+        state: enabled
+
+    - name: creating additional document root html file
+      copy:
+        content: "<h1>This is Custom Apache Server on {{ ansible_fqdn }}</h1>"
+        dest: /var/www/html/ansible.html
+
+    - name: making confiugration changes
+      replace:
+        dest: /etc/httpd/conf/httpd.conf
+        regexp: "index.html"
+        replace: "ansible.html"
+      notify: restart apache
+
+  handlers:
+    - name: restart apache
+      service:
+        name: "{{ srv }}"
+        state: restarted
+
+
+[devops@servera project]$ cat reboot_and_mail_notification.yml
+---
+- name: play for server reboot
+  hosts: webserver
+  # ignore_errors: true
+  #vars_files:
+  #  - /path/to/the/file/password.yml
+  tasks:
+    - name: reboot webserver
+      reboot:
+      notify:
+        - send email
+        - print message
+    #remove webservers from load balancer group
+    #delegate_to: IPADDROFLB  | HOSTNAMEOFLB
+    #update packages
+    #restart service
+    #join all webserver in the LB group
+
+    - name: validating uptime
+      shell: uptime
+      register: uptime_output
+
+    - name: print the variable
+      debug:
+        var: uptime_output
+
+  handlers:
+    - name: send email
+      mail:
+        host: smtp.gmail.com
+        port: 587
+        username: sender@gmail.com
+        password: password@123
+        to: reciever@gmail.com
+        subject: "Patching Notification"
+        body: "This is to inform that server rebooted successfully"
+      delegate_to: localhost  # ansible controller node ( Delegations )
+      ignore_errors: true
+
+    - name: print message
+      debug:
+        msg: "Server Reboot is Completed"
+      delegate_to: localhost
+
+
+
+
+
+#Command History:
+
+ #Conditions
+  451  #Handlers
+  452  #Error Handling stuff
+  453  #File Managements
+  454  ansible all -m ping
+  455  vim conditions.yml
+  456  ansible-playbook  conditions.yml --syntax-check
+  457  ansible-playbook  conditions.yml
+  458  sudo yum list all | grep git
+  459  sudo yum list all | grep elinks
+  460  sudo yum install git
+  461  vim conditions.yml
+  462  ansible-playbook  conditions.yml
+  463  ansible all -m setup | grep distribution
+  464  ansible all -m setup -a filter=ansible_ditribution
+  465  ansible all -m setup -a filter=ansible_distribution
+  466  #pkg install ( db ) ram >= 1G
+  467  ansible serverb.example.com -m setup
+  468  vim conditions.yml
+  469  ansible-playbook  conditions.yml
+  470  #ansible_distribution == "Ubuntu"
+  471  vim conditions.yml
+  472  vim conditions2.yml
+  473  ansible-playbook  conditions2.yml --syntax-check
+  474  ansible-playbook  conditions2.yml
+  475  vim conditions2.yml
+  476  cp conditions2.yml without_condition.yml
+  477  vim without_condition.yml
+  478  #ansible-playbook  without_condition.yml --limit webserver
+  479  hosts: webserver
+  480  vim without_condition.yml
+  481  ansible-playbook  without_condition.yml --limit webserver
+  482  #--limit  webserver == hosts: webserver
+  483  vim without_condition.yml
+  484  vim conditions2.yml
+  485  #ansible-playbook  conditions2.yml --limit windowsserver
+  486  vim conditions
+  487  vim conditions2.yml
+  488  ansible-playbook  conditions2.yml
+  489  vim conditions2.yml
+  490  ansible-playbook  conditions2.yml
+  491  vim conditions2.yml
+  492  ansible-playbook  conditions2.yml
+  493  vim conditions2.yml
+  494  ansible-playbook  conditions2.yml
+  495  vim conditions2.yml
+  496  vim handlers.yml
+  497  ansible-playbook  handlers.yml --syntax-check
+  498  ansible-playbook  handlers.yml
+  499  #handlers : special tasks ( condidtions >> notfiy )
+  500  curl http://serverb.example.com
+  501  vim handlers.yml
+  502  cat  handlers.yml
+  503  vim handlers.yml
+  504  #ignore errors
+  505  vim reboot_and_mail_notification.yml
+  506  ansible-playbook  reboot_and_mail_notification.yml --syntax-check
+  507  vim reboot_and_mail_notification.yml
+  508  ansible-playbook  reboot_and_mail_notification.yml --syntax-check
+  509  ansible-playbook  reboot_and_mail_notification.yml
+  510  vim reboot_and_mail_notification.yml
+  511  #Conditions
+  512  #Handlers
+  513  #Ignore Errors ( Error Handlers )
+  514  vim reboot_and_mail_notification.yml

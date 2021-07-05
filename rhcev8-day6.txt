@@ -1,0 +1,268 @@
+[devops@servera project]$ tree
+.
+├── ansible.cfg
+├── conditions2.yml
+├── conditions.yml
+├── devops
+├── facts.yml
+├── files.yml
+├── group_vars
+│   └── webserver
+├── handlers.yml
+├── hosts
+├── hosts.j2
+├── hosts.yml
+├── host_vars
+│   └── serverb.example.com
+├── index.html
+├── loops.yml
+├── motd.j2
+├── pass.yml
+├── playbook.yml
+├── reboot_and_mail_notification.yml
+├── serverb.example.com
+│   └── tmp
+│       └── files
+│           └── serverb.txt
+├── serverb.txt
+├── serverc.example.com
+│   └── tmp
+│       └── files
+│           └── serverc.txt
+├── serverc.txt
+├── template.yml
+├── users.yaml
+├── variables.yml
+├── vars.yml
+└── without_condition.yml
+
+8 directories, 27 files
+
+
+
+#Playbooks:
+
+[devops@servera project]$ cat files.yml
+---
+- name: play for file management
+  hosts: all
+  tasks:
+  #file /tmp/files/serverb.txt ( serverb ) /tmp/files/serverc.txt ( serverc )
+  #first ansible should verify existence of DIR
+    - name: verify the dir exist or not
+      stat:
+        path: /tmp/files
+      register: output
+
+      #- debug: var=output
+      #  var: output
+    - name: create DIR if it does not exist
+      file:
+        path: /tmp/files
+        state: directory
+        owner: root
+        group: devops
+        mode: 0770
+      when: output.stat.exists == false
+
+    - name: creating files using copy module
+      copy:
+        content: "This is Sample file using Copy Module"
+        dest: "/tmp/files/{{ ansible_hostname }}.txt"
+
+
+    - name: replace a string in a file using replace module
+      replace:
+         path: "/tmp/files/{{ ansible_hostname }}.txt"
+         regexp: "Copy"
+         replace: "Replace"
+
+    - name: append a line in file
+      lineinfile:
+        path: "/tmp/files/{{ ansible_hostname }}.txt"
+        line: "This is Second line in the file using LineInFile Module"
+
+    - name: appending a block in a file
+      blockinfile:
+        path: "/tmp/files/{{ ansible_hostname }}.txt"
+        block: |
+            First line using block in file module
+            Second line
+            Third Line
+            Forth line
+
+    - name: copy file from managed node to ansible controller
+      fetch:
+        src: "/tmp/files/{{ ansible_hostname }}.txt"       #remote path
+        dest: /home/devops/project/      # local path
+        flat: true
+
+#- name: play for windows
+#  hosts: windows
+#  tasks:
+#    - name: copy files from controller to win managed nodes
+#      win_copy:
+#        src: /home/devops/project/serverb.txt
+#        dest: C:\users\
+
+
+    #copy: src=local path  dest=remote path
+
+
+
+[devops@servera project]$ cat motd.j2
+{# This is sample template #}
+
+Welcome to the Host {{ ansible_fqdn }}
+Server Status : OK
+Initial Information
+
+Host Distribution  :  {{ ansible_distribution }}
+Hostname           :  {{ ansible_hostname }}
+IP Address         :  {{ ansible_all_ipv4_addresses[1] }}
+
+Unauthorized access is deined for any concern please contact to admin on {{ admin_mail }}
+
+
+
+[devops@servera project]$ cat template.yml
+---
+- name: play for jinja2 template
+  hosts: all
+  vars:
+    admin_mail: root@example.com
+  tasks:
+    - name: copy template file to the manged node
+      template:
+        src: motd.j2
+        dest: /etc/motd
+        owner: root
+        group: root
+        mode: 0644
+
+
+
+[devops@servera project]$ cat hosts.j2
+{# Sample file for /etc/hosts #}
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+
+#Local Name Resolution using J2 Template
+
+{% for i in groups['all'] %}
+{{ hostvars[i]['ansible_facts']['all_ipv4_addresses'][1] }}  {{ hostvars[i]['ansible_fqdn'] }} {{ hostvars[i]['ansible_hostname'] }}
+{% endfor %}
+
+
+[devops@servera project]$ cat hosts.yml
+---
+- name: play for hosts file using loop in j2 template
+  hosts: all
+  tasks:
+    - name: hosts file using j2 template
+      template:
+        src: hosts.j2
+        dest: /tmp/hosts
+
+
+#Command History:
+#File Management using Ansible
+  553  #Modules:
+  554  #Copy
+  555  #file
+  556  #replace
+  557  #lineinfile
+  558  #blockinfile
+  559  #copy from control to manage node
+  560  #copy log files from manage nodes to controller
+  561  #fetch ( copy from manage nodes to controller )
+  562  vim files.yml
+  563  ansible-playbook  files.yml
+  564  vim files.yml
+  565  ansible-playbook  files.yml  ---syntax-check
+  566  ansible-playbook  files.yml  --syntax-check
+  567  ansible-playbook  files.yml
+  568  ansible serverb.example.com -a "cat /tmp/fiiles/serverb.txt"
+  569  ansible serverb.example.com -a "cat /tmp/files/serverb.txt"
+  570  ansible serverc.example.com -a "cat /tmp/files/serverc.txt"
+  571  vim files.yml
+  572  ansible-playbook  files.yml
+  573  tree
+  574  #fetch : /tmp/files/serverb.txt /tmp/files/serverc.txt
+  575  cat serverb.example.com/tmp/files/serverb.txt
+  576  #/var/log/messages ( 10 manage nodes )
+  577  #fetch: src=/var/log/messages dest=/home/devops/project/
+  578  vim files.yml
+  579  ansible-playbook  files.yml
+  580  tree
+  581  cat server*
+  582  #copy: src=(local)  dest=(remote: local workstation)
+  583  vim files.yml
+  584  ansible-doc -l | grep win
+  585  #copy
+  586  #file
+  587  #stat
+  588  #replace
+  589  #fetch
+  590  #lineinfile
+  591  #blockinfile
+  592  #rsync > synchronize
+  593  ansible-doc synchronize
+  594  clear
+  595  #File management
+  596  #Static files
+  597  #index.html ( control node ) : copy module to paste in manage nodes
+  598  cat serverb.
+  599  cat serverb.txt
+  600  #copy: src=serverb.txt dest=/tmp/
+  601  #Dynamic Files
+  602  #file : template >> variables >> pasted in managed nodes
+  603  #ifcfg-eth0 ( 100 linux boxes )
+  604  #ip address from dhcp >> static one
+  605  #/etc/sysconfig/network-scritps/ifcfg-<nic>
+  606  #eth0  | enp0s3  | eno1  | enp1
+  607  #template >> variables ( facts | user-defined variables )
+  608  #Jinja2 > templating engine  > copy file to manage nodes
+  609  #template:
+  610  vim motd.j2
+  611  ansible serverb.example.com -m setup | less
+  612  vim motd.j2
+  613  vim template.yml
+  614  ansible-playbook  template.yml --syntax-check
+  615  ansible-playbook  template.yml
+  616  ssh serverb.example.com
+  617  ssh serverc.example.com
+  618  vim motd.j2
+  619  #vmware modules ( create | manage | update )
+  620  #haproxy ( lb )
+  621  #apache ( config )
+  622  #sshd ( config )
+  623  #network scripts
+  624  #motd
+  625  #/etc/hosts
+  626  #templates
+  627  #connection : ssh
+  628  #windows :
+  629  #router :
+  630  cat /etc/hosts
+  631  vim hosts.j2
+  632  cat motd.j2
+  633  vim hosts.j2
+  634  vim hosts.yml
+  635  ansible-playbook  hosts.yml  --syntax-check
+  636  ansible-playbook  hosts.yml
+  637  ansible all -a "cat /tmp/hosts"
+  638  cat hosts.j2
+  639  #/etc/hosts
+  640  clear
+  641  #sed >> replace
+  642  ansible-doc replace
+  643  #sed
+  644  #shell:
+  645  #awk
+  646  #modules
+  647  #shell: awk -F
+  648  ansible-doc -l | grep key
+  649  ansible-doc -l | grep ssh
+  650  ansible-doc openssh_keypair
+  651  ansible-doc authorized_key

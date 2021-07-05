@@ -1,0 +1,23 @@
+08:53:10	 From  Insight Tech : good morning Harry
+08:55:34	 From  Harry : we will be starting soon
+08:55:52	 From  Harry : let's wait for couple of minutes
+09:00:02	 From  Harry : voice is audible ?
+09:00:20	 From  Raphael : a little bit of echo
+09:00:42	 From  Raphael : but audible
+09:01:08	 From  Raphael : good to me
+09:01:12	 From  arsene : it better 
+09:20:35	 From  arsene : please can you cat again ansible.cfg
+09:25:25	 From  Harry : [devops@servera roles]$ cat ../ansible.cfg[defaults]inventory=/home/devops/project/hosts#inventory=/home/devops/project/dynamicremote_user=devopsask_pass=Falseforks=5roles_path=/home/devops/project/roles[privilege_escalation]become=Truebecome_method=sudobecome_user=rootbecome_ask_pass=Fals
+09:26:55	 From  arsene : thanks
+09:37:06	 From  Harry : any questions ?
+09:55:51	 From  Harry : am I audible ?
+09:55:59	 From  Harry : and screen is visible ?
+09:56:01	 From  arsene : yes
+10:17:24	 From  arsene : do you have to be in the roles directory when download any galaxy template?
+10:17:51	 From  arsene : ok
+10:18:37	 From  arsene : so we can try it with cent0S 8?
+10:19:00	 From  arsene : ok
+10:19:16	 From  arsene : ok
+10:41:20	 From  Harry : any questions ?
+10:42:31	 From  Harry : thanks all
+10:42:39	 From  bmbangwana : Thank you Harry

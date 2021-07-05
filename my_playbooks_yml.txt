@@ -1,0 +1,491 @@
+[devops@servera project]$ tree
+.
+├── ansible.cfg
+├── conditions2.yml
+├── conditions3.yml
+├── conditions.yml
+├── devops
+├── facts.yml
+├── group_vars
+│   └── webserver
+├── handlers.yml
+├── hosts
+├── host_var
+│   └── serverb.example.com
+├── index.html
+├── loops1.yml
+├── loops.yml
+├── pass.yml
+├── playbook.yml
+├── reboot_and_mail_notification.yml
+├── users.yml
+├── variables.yml
+└── vars.yml
+
+
+**********************************************************************
+
+[devops@servera project]$ cat hosts
+[webserver]
+serverb.example.com
+
+[dbserver]
+serverc.example.com
+
+[servers:children]
+webserver
+dbserver
+
+
+*************************************************************************
+
+[devops@servera project]$ cat ansible.cfg
+[defaults]
+inventory=/home/devops/project/hosts
+remote_user=devops
+ask_pass=False
+
+[privilege_escalation]
+become=True
+become_method=sudo
+become_user=root
+become_ask_pass=False
+
+
+************************************************************
+
+[devops@servera project]$ cat conditions.yml
+---
+- name: play for conditional statement
+  hosts: all
+  become: true
+  vars:
+      supported_distros:
+        - Fedora
+        - CentOS
+        - RedHat
+  tasks:
+    - name: installing pkg if OS is RedHat
+      yum:
+        name: git
+        state: present
+      when: ansible_distribution == "RedHat"
+      when: ansible-distribution in supported_distros
+
+        #- name: play for Ubuntu systems
+        #hosts: debian
+        #become: true
+        #tasks:
+
+    - name: installing pkg if OS is Ubuntu
+      apt:
+        name: apache2
+        state: present
+      when: ansible_distribution == "Ubuntu"
+
+**********************************************************
+
+[devops@servera project]$ cat conditions2.yml
+---
+- name: play for conditional statement #using variables
+  hosts: all
+  become: true
+  vars:
+      supported_distros:
+        - Fedora
+        - CentOS
+        - RedHat
+  tasks:
+    - name: installing pkg if OS is RedHat
+      yum:
+        name: git
+        state: present
+        when: ansible-distribution in supported_distros
+
+    - name: installing pkg if OS is Ubuntu
+      apt:
+        name: apache2
+        state: present
+      when: ansible_distribution == "Ubuntu"
+
+***************************************************************
+
+[devops@servera project]$ cat conditions3.yml
+---
+- name: play for condition 2
+  hosts: all
+  tasks:
+    - name: installing apache if node is from webserver group
+      yum:
+        name: httpd
+        state: latest
+      when: ansible_fqdn in groups['webserver']
+
+      #user defined variables
+      #dynamic variables ( facts )
+      #magic variables ( pred-defined /special variables )
+
+    - name: installing mysql if node is from dbserver group
+      yum:
+        name: mariadb-server
+        state: latest
+      when: ansible_fqdn in groups['dbserver']
+
+      #websrver : serverb.example.com
+      #dbserver : serverc.example.com
+
+**********************************************************************
+
+[devops@servera project]$ cat devops
+devops ALL=(ALL) NOPASSWD:ALL
+
+**********************************************************************
+
+[devops@servera project]$ cat facts.yml
+---
+- name: play for ansible facts
+  hosts: webserver
+  tasks:
+    - name: print facts variables
+      debug:
+        var: ansible_facts
+
+    - debug:
+        msg: ansible_all_ipv4_addresses[1]
+
+    - debug:
+        msg: ansible_hostname
+
+    - debug:
+        msg: "Root FS : {{ ansible_facts.cmdline.root }}"
+
+        #- debug:
+        #msg: "Root file system device = {{ ansbile_cmdline.root }}"
+
+    - name: creating another html file
+      copy:
+        content: "<h1>Welcome to Apache on {{ ansible_hostname }}. which is deployed on {{ ansible_distribution }}</h1>"
+        dest: /var/www/html/facts.html
+
+*******************************************************************
+
+[devops@servera project]$ cat handlers.yml
+---
+- name: play for handlers
+  hosts: webserver
+  vars:
+    pkg: httpd
+    srv: httpd
+    rule: http
+  tasks:
+    - name: installing {{ pkg }}
+      yum:
+        name: "{{ pkg }}"
+        state: present
+
+
+    - name: starting {{ srv }} service
+      service:
+        name: "{{ srv }}"
+        state: started
+
+
+    - name: starting {{ rule }} in firewalld
+      service:
+        name: "{{ rule }}"
+        state: enabled
+
+    - name: creating additional document root html file
+      copy:
+        content: "<h1>This is Custom Apache Server on {{ ansible_fqdn }}</h1>"
+        dest: /var/www/html/ansible.html
+
+    - name: making configuration changes
+      replace:
+         dest: /etc/httpd/conf/httpd.conf
+         regexp: "index.html"
+         replace: "ansible.html"
+      notify: restart apache
+
+  handlers:
+    - name: restart apache
+      service:
+        name: "{{ srv }}"
+        state: restarted
+
+        #- name: send email
+        #mail:
+
+        #handlers are special conditions
+...
+
+****************************************************************
+
+[devops@servera project]$ cat index.html
+<h1>Welcome to Apache Application Page</h1>
+<h1>..........Olufemi Amosu..........</h1>
+
+*************************************************************
+
+[devops@servera project]$ cat loops.yml
+---
+- name: play for loops
+  hosts: dbserver
+  #gather_facts: false
+  vars:
+    - mariadb-server
+    - mariadb
+    - firewalld
+    - vim
+  srvs:
+    - mariadb
+    - firewalld
+  tasks:
+    - name: installing pkgs mariadb-server mysql firewalld vim
+      yum:
+        name: "{{ pkgs }}"
+        #- mariadb-server
+        #- mariadb
+        #- firewalld
+        #- vim
+        state: present
+
+    - name: starting services mariadb firewalld
+      service:
+        name: "{{ item }}"
+        state: started
+      loop: "{{ srvs }}"
+
+        #loop:
+        #- mariadb
+        #- firewalld
+
+****************************************************************
+
+[devops@servera project]$ cat loops1.yml
+---
+- name: play for loops
+  hosts: dbserver
+  gather_facts: false
+  vars:
+    pkgs:
+      - mariadb-server
+      - mariadb
+      - firewalld
+      - vim
+    srvs:
+      - mariadb
+      - firewalld
+  tasks:
+    - name: installing pkgs mariadb-server mysql firewalld vim
+      yum:
+        name: "{{ pkgs }}"
+        # - mariadb-server
+        #  - mariadb
+        #  - firewalld
+        #  - vim
+        state: present
+
+    #  yum  install  mariadb-server  mysql   firewalld  vim
+    - name: starting services mariadb firewalld
+      service:
+         name: "{{ item }}"
+         state: started
+      loop: "{{ srvs }}"  #loop keyword is available from Ansible v2.4 >
+        #- mariadb
+        #- firewalld
+
+      # - name: removing packages
+      #yum:
+      #  name: "{{ item }}"
+      # state: removed
+      #with_items:      #in previous version of ansible < 2.4
+      #   - mariadb-server
+      #   - mariadb
+
+********************************************************************
+
+[devops@servera project]$ cat pass.yml
+$ANSIBLE_VAULT;1.1;AES256
+33613337333933356164633933383566633866363834306331613035363464353333306339353062
+6237353166383664643138346462316365643164393030380a613330643434383031623463346164
+32343064643466326236383061663661326537626663623034643166636364373264306264643338
+3432613264306434620a653932376165633161666639613463306266333563393564626365353137
+34623262366131343261613663383933326533626162366338323335383362313737
+
+
+******************************************************************
+
+[devops@servera project]$ cat playbook.yml
+---
+- name: first playbook of ansible
+  hosts: webserver
+  task:
+  - name: first task to install apache rpm
+    yum:
+      name: httpd
+      state: installed
+  - name: second task to start apache service
+    service:
+      name: httpd
+      state: started
+...
+
+
+**************************************************************************
+
+[devops@servera project]$ cat reboot_and_mail_notification.yml
+---
+- name: play for server reboot
+  hosts: webserver
+  tasks:
+    - name: reboot webserver
+      reboot:
+      notify:
+        - send email
+        - print message
+
+      #remove webservers from load balancer group
+      #delegate_to: IPADDROFLB | HOSTNAMEOFLB
+      #update packages
+      #restart service
+      #join all webserver in the LB group
+
+    - name: validating uptime
+      shell: uptime
+      register: uptime_output
+
+    - name: print the variable
+      debug:
+        var: uptime-output
+
+  handlers:
+    - name: send email
+      mail:
+        host: smtp.gmail.com
+        port: 587
+        username: testpy123@gmail.com
+        password: "{{ mail_pass }}"
+        to: olufemi.amosu@gmail.com
+        subject: "Patching Notification"
+        body: "This is to inform you that server rebooted successfully"
+      delegate_to: localhost
+      ignore_errors: true
+
+      #ignore_errors: means to ignore error if the execution fails,
+      #delegate_to: means it should continue with other tasks ansible controller node
+      #(Delegations allow you to run a specific task under particular node which is not part of your play)
+
+    - name: priint message
+      debug:
+        msg: "Server Reboot is Completed"
+
+*******************************************************************
+
+[devops@servera project]$ cat users.yml
+---
+- name: playbook for user account creation
+  hosts: all
+  vars_files:
+    - pass.yml
+  tasks:
+    - name: adding users
+      user:
+        name: nicefemi
+        state: present
+        uid: 10101
+        shell: /bin/sh
+        groups: wheel
+        password: "{{ pass | password_hash('sha512')}}"
+
+
+**************************************************************
+
+[devops@servera project]$ cat variables.yml
+---
+- name: playbook for variable
+  hosts: webserver
+  #vars:
+    #web_pkg: httpd
+    #web_srv: httpd
+    #fw_pkg: firewalld
+    #fw_srv: firewalld
+    #fw_rule: http
+  vars_files:
+    - vars.yml
+  tasks:
+    - name: installing {{ web_pkg }} rpm
+      yum:
+        name: "{{ web_pkg }}"
+        state: latest
+
+    - name: starting {{ web_srv }} service
+      service:
+        name: "{{ web_srv }}"
+        state: started
+        enabled: true
+
+    - name: installing {{ fw_pkg }} rpm
+      yum:
+        name: "{{ fw_pkg }}"
+        state: latest
+
+    - name: starting {{ fw_srv }} rpm
+      service:
+        name: "{{ fw_srv }}"
+        state: started
+        enabled: true
+
+    - name: allow {{ fw_rule }} protocol in firewall
+      firewalld:
+        service: "{{ fw_rule }}"
+        state: enabled
+        permanent: true
+        immediate: true
+
+    - name: copy index.html file
+      copy:
+        src: index.html
+        dest: /var/www/html/index.html
+...
+
+***********************************************************************
+
+[devops@servera project]$ cat vars.yml
+---
+#Variable file for variables.yml playbook
+web_pkg: httpd
+web_srv: httpd
+fw_pkg: firewalld
+fw_srv: firewalld
+fw_rule: http
+
+**************************************************************
+
+[devops@servera project]$ cd group_vars/
+[devops@servera group_vars]$ ll
+total 4
+-rw-rw-r--. 1 devops devops 85 Feb 18 15:43 webserver
+[devops@servera group_vars]$ cat webserver
+---
+web_pkg: httpd
+web_srv: httpd
+fw_pkg: firewalld
+fw_srv: firewalld
+fw_rule: http
+
+********************************************************************
+
+[devops@servera project]$ cd host_var/
+[devops@servera host_var]$ ll
+total 4
+-rw-rw-r--. 1 devops devops 86 Feb 18 15:48 serverb.example.com
+[devops@servera host_var]$ cat serverb.example.com
+---
+web_pkg: vsftpd
+web_srv: vsftpd
+fw_pkg: firewalld
+fw_srv: firewalld
+fw_rule: ftp
+
+*********************************************************************

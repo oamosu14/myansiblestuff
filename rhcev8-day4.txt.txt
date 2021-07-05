@@ -1,0 +1,306 @@
+#Day4
+
+[devops@servera project]$ tree
+.
+├── ansible.cfg
+├── devops
+├── facts.yml
+├── group_vars
+│   └── webserver
+├── hosts
+├── host_vars
+│   └── serverb.example.com
+├── index.html
+├── loops.yml
+├── pass.yml
+├── playbook.yml
+├── users.yaml
+├── variables.yml
+└── vars.yml
+
+2 directories, 13 files
+
+
+#Playbooks:
+
+[devops@servera project]$ cat users.yaml
+---
+- name: playbook for user account creation
+  hosts: all
+  vars_files:
+    - pass.yml
+  tasks:
+    - name: adding users
+      user:
+        name: harry
+        state: present
+        uid: 1111
+        shell: /bin/sh
+        #shell: /sbin/nologin
+        groups: wheel  # RHEL 6/7/8  >> 7/8 >  sudo
+        password: "{{ pass | password_hash('sha512') }}"
+        update_password: on_create
+  #   - name: changing root users password
+        # user:
+        #name: root
+        #state: present
+        #password: "{{ root_pass | password_hash('sha512') }}"
+
+
+        #Sensitive info ( password|passphrases|certs ) cat users.yml
+        #vi pass.yml
+        #---
+        #pass: password@123 ( encrypt password ) or ( filter )
+        #shadow >> hash of user's password   $1$  $5$
+        #$1$   :  MD5
+        #$5$   :  sha256
+        #$6$   :  sha512
+
+
+[devops@servera project]$ ansible-vault  view pass.yml
+Vault password:
+---
+pass: password@123
+#this is comment line
+
+
+[devops@servera project]$ cat pass.yml
+$ANSIBLE_VAULT;1.1;AES256
+31633830363435663638386663346133616130623166666238326536353964663535633032333936
+3535353830336461623532353166653533613461393065330a623135333834613535336332396566
+35363963326262646632333762616435343432323935626362653366333736383834643663626430
+3138373931663436660a346163343165643237313164633763373136346431383336303566646662
+34343662346366363765323266323366336134343738633166653265653730303032376136366339
+3735373330623534636535323831643761333961376666323361
+
+
+
+[devops@servera project]$ cat facts.yml
+---
+- name: play for ansible facts
+  hosts: webserver
+  #gather_facts: false  #disable fact gathering
+  #gather_facts: true   #enable fact gathering : default
+  tasks:
+    - name: print facts variable
+      debug:
+        var: ansible_all_ipv4_addresses[1]
+
+    - debug:
+         var: ansible_facts.hostname
+
+    - debug:
+         msg: "Root FS : {{ ansible_facts.cmdline.root }}"
+
+    - debug:
+        msg: "another approch for FS : {{ ansible_facts['cmdline']['root'] }}"
+   - debug:
+        msg: "Root file system device = {{ ansible_cmdline.root }}"
+
+    - name: creating another html file
+      copy:
+        content: "<h1>Welcome to Apache on {{ ansible_hostname }}. which is deployed on {{ ansible_distribution }}</h1>"
+        dest: /var/www/html/facts.html
+
+
+        #echo $SHEL
+        # < 2.5   all the facts were injected as a seperate variable
+        #eg. ansible_hostname | ansible_fqdn | ansible_distribution
+        #2.5 > all facts got injected in a single variable  ansible_facts list/array
+
+
+[devops@servera project]$ cat loops.yml
+---
+- name: play for loops
+  hosts: dbserver
+  gather_facts: false
+  vars:
+    pkgs:
+      - mariadb-server
+      - mariadb
+      - firewalld
+      - vim
+    srvs:
+      - mariadb
+      - firewalld
+  tasks:
+    - name: installing pkgs mariadb-server mysql firewalld vim
+      yum:
+        name: "{{ pkgs }}"
+        # - mariadb-server
+        #  - mariadb
+        #  - firewalld
+        #  - vim
+        state: present
+
+    #  yum  install  mariadb-server  mysql   firewalld  vim
+    - name: starting services mariadb firewalld
+      service:
+         name: "{{ item }}"
+         state: started
+      loop: "{{ srvs }}"  #loop keyword is available from Ansible v2.4 >
+        #- mariadb
+        #- firewalld
+
+    - name: removing packages
+      yum:
+        name: "{{ item }}"
+        state: removed
+      with_items:      #in previous version of ansible < 2.4
+          - mariadb-server
+          - mariadb
+
+  # - name: update all rpms
+  #    yum:
+  #      name: '*'
+  #      state: latest
+
+        #yum update -y
+
+
+         #  - name: starting firewalld
+         #    service:
+         #name: firewalld
+         # state: started
+
+
+   # initd  service  mariadb   start && service firewalld  start
+
+
+
+
+
+#Command History:
+
+ 295  ansible all -m ping
+  296  tree
+  297  #Secrets
+  298  #Facts
+  299  #Conditions | Loops
+  300  #user >> password
+  301  vim users.yaml
+  302  #ansible-vault   > sensitivie > text form to enc.
+  303  ansible-vault
+  304  clear
+  305  ansible-vault  create pass.yml
+  306  ls
+  307  cat pass.yml
+  308  #---
+  309  #pass: password@123
+  310  cat pass.yml
+  311  ansible-vault  view pass.yml
+  312  ansible-vault edit  pass.yml
+  313  ansible-vault  view pass.yml
+  314  cat pass.yml
+  315  ansible-vault  rekey   pass.yml
+  316  clear
+  317  tree
+  318  ansible-playbook users.yaml --syntax-check
+  319  cat users.yaml
+  320  ansible-playbook users.yaml --ask-vault-password  --syntax-check
+  321  ansible-playbook users.yaml --ask-vault-pass  --syntax-check
+ 322  ansible-playbook users.yaml --ask-vault-pass
+  323  ssh harry@serverb
+  324  ssh harry@serverc
+  325  cat users.yaml
+  326  #vault file  ( password >  encrypted )
+  327  cat pass.yml
+  328  ansible-vault  view pass.yml
+  329  vim users.yaml
+  330  sudo passwd root
+  331  cat ansible.cfg
+  332  vim users.yaml
+  333  #sudo
+  334  ansible-playbook users.yaml --ask-vault-pass
+  335  #harry
+  336  vim users.yaml
+  337  ansible-playbook users.yaml --ask-vault-pass
+  338  vim users.yaml
+  339  #state: present
+  340  #state: absent
+  341  #state: installed | present
+  342  #state: removed | absent
+  343  #ansible-doc yum a
+  344  #Facts
+  345  #2 Types of Variables:
+  346  #1. User Defined Variable ( Global | Play | Host Scope )
+  347  #pass | web_pkg
+  348  #2. Dynamic Variables
+  349  #use
+  350  #Facts > complete environment info of manage node
+  351  #module : setup
+  352  vim facts.yml
+  353  ansible-playbook  facts.yml
+ 354  #setup : gather fact info of the clients
+  355  vim facts.yml
+  356  ansible-playbook  facts.yml
+  357  ansible webserver  -m  setup  | less
+  358  ansible webserver  -m  setup  -a  filter=ansible_fqdn
+  359  ansible webserver  -m  setup  -a  filter=ansible_hostname
+  360  ansible webserver  -m  setup  -a  filter=ansible_distribution
+  361  #ansible webserver  -m  setup  | less
+  362  ansible webserver  -m  setup  | grep distribution
+  363  ansible webserver  -m  setup  | grep fqdn
+  364  vim facts.yml
+  365  ansible-playbook  facts.yml
+  366  vim facts.yml
+  367  ansible-playbook  facts.yml
+  368  curl http://serverb.example.com
+  369  curl http://serverb.example.com/facts.html
+  370  cat facts.yml
+  371  #Facts
+  372  #ifcfdg
+ 374  #nested variables ( array )
+  375  ansible webserver -m setup | less
+  376  vim facts.yml
+  377  ansible-playbook  facts.yml
+  378  vim facts.yml
+  379  ansible-playbook  facts.yml
+  380  vim facts.yml
+  381  ansible-playbook  facts.yml
+  382  ansible webserver -m setup | less
+  383  vim facts.yml
+  384  ansible-playbook  facts.yml
+  385  ansible webserver -m setup | less
+  386  vim facts.yml
+  387  ansible-playbook  facts.yml
+ 388  vim facts.yml
+  389  ansible-playbook  facts.yml
+  390  #{{ ansible_cmdline.root }}
+  391  #{{ ansible_facts.cmdline.root }}
+  392  vim facts.yml
+  393  ansible-playbook  facts.yml
+  394  vim facts.yml
+  395  ansible-playbook  facts.yml
+  396  vim facts.yml
+  397  ansible-playbook  facts.yml
+  398  vim facts.yml
+  399  #Conditions and Loops
+  400  vim loops.yml
+  401  ansible-playbook  loops.yml --syntax-check
+  402  ansible-playbook  loops.yml
+  403  vim loops.yml
+  404  ansible-playbook  loops.yml
+  405  ansible dbserver -m command -a "systemctl status mariadb"
+  406  ansible dbserver -m command -a "systemctl status firewalld"
+  407  vim loops.yml
+  408  ansible-playbook  loops.yml
+  409  vim loops.yml
+  410  ansible-playbook  loops.yml
+  411  vim loops.yml
+  412  ansible-playbook  loops.yml --syntax-check
+  413  ansible-playbook  loops.yml
+  414  ansible dbserver -a "rpm -q mariadb-server"
+  415  ansible dbserver -a "rpm -q mariadb"
+ 417  vim loops.yml
+  418  ansible-doc yum
+  419  clear
+  420  tree
+  421  #Conditions
+  422  #Secrets
+  423  #Facts
+  424  #Loops
+  425  #playbook should create users > external variable file ( password ) > encrypted using ansible-vault
+  426  #Playbook for ansible_facts
+  427  #loop | with_items
+

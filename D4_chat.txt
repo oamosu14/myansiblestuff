@@ -1,0 +1,29 @@
+09:03:11	 From  Raphael : good
+09:31:20	 From  Harry : any questions ?
+09:42:46	 From  SCHOOL : and how to delete the specific user?
+09:58:19	 From  Raphael : Cool
+10:07:59	 From  Celestine Ndip : what happened?
+10:08:04	 From  SCHOOL : you got cut off
+10:08:05	 From  Raphael : Hey we lost your screen
+10:08:22	 From  arsene : me too 
+10:08:54	 From  SCHOOL : we can hear anything
+10:09:44	 From  ATES_Training khushdil@ates.co.in : Am I audible ?
+10:09:49	 From  Raphael : yep
+10:09:49	 From  arsene : yes
+10:09:53	 From  SCHOOL : yes
+10:09:54	 From  Celestine Ndip : yes
+10:10:59	 From  ATES_Training khushdil@ates.co.in : screen is visible ?
+10:28:02	 From  ATES_Training khushdil@ates.co.in : any questions ?
+10:28:32	 From  ATES_Training khushdil@ates.co.in : am I audible ?
+10:50:37	 From  SCHOOL : remove them
+10:50:43	 From  SCHOOL : please
+10:51:00	 From  SCHOOL : delete
+10:53:19	 From  SCHOOL : please use removed state
+10:53:32	 From  SCHOOL : don"t use absent
+10:59:01	 From  SCHOOL : cool
+11:02:36	 From  ATES_Training khushdil@ates.co.in : any questions ?
+11:03:09	 From  ATES_Training khushdil@ates.co.in : #playbook should create users > external variable file ( password ) > encrypted using ansible-vault
+11:03:47	 From  ATES_Training khushdil@ates.co.in : #Playbook for ansible_facts
+11:03:53	 From  ATES_Training khushdil@ates.co.in : #loop | with_items
+11:04:04	 From  ATES_Training khushdil@ates.co.in : Thanks all
+11:04:10	 From  ATES_Training khushdil@ates.co.in : have a good day

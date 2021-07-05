@@ -1,0 +1,343 @@
+
+
+#Day-10
+
+[devops@servera project]$ cat hosts
+servera
+
+[webserver]
+serverb.example.com
+
+[dbserver]
+serverc.example.com
+
+[servers:children]
+webserver
+dbserver
+
+
+[devops@servera project]$ cat user-key-using-alexa.yml
+---
+- name: play for user management
+  hosts: all
+  gather_facts: false
+  vars:
+    user_pass: redhat
+  tasks:
+     - name: adding a user with ssh keys
+       user:
+         name: alexa
+         state: present
+         password: "{{ user_pass | password_hash('sha512') }}"
+         groups: wheel
+         generate_ssh_key: true
+         #   ssh_key_bits: 2048
+         #ssh_key_file: /home/alexa/.ssh/alexa_rsa
+         uid: 1110
+
+
+- name: play to copy ssh public key from controller to all manage nodes
+  hosts: all
+  remote_user: alexa
+  become: false
+  gather_facts: false
+  tasks:
+    - name: generating the keys on controller
+      openssh_keypair:
+         path: /home/alexa/.ssh/id_rsa
+      delegate_to: servera
+      run_once: true
+
+
+    - name: copy public key to project dir
+      copy:
+        src: /home/alexa/.ssh/id_rsa.pub
+        remote_src: true
+        dest: /tmp
+      delegate_to: servera
+      run_once: true
+
+    - name: creating ssh dir in manage node
+      file:
+         path: /home/alexa/.ssh
+         state: directory
+         owner: alexa
+         group: alexa
+         mode: 0700
+
+    - name: copy public key from controller to manage hosts
+      authorized_key:
+         user: alexa
+         state: present
+         key: "{{ lookup('file', '/tmp/id_rsa.pub') }}"
+
+
+
+
+[devops@servera project]$ cat jobs.yml
+---
+- name: play for jobs
+  hosts: webserver
+  tasks:
+     - name: create at job for single time execution
+       at:
+         command: 'date > /tmp/{{ ansible_hostname }}.txt'
+         state: present
+         count: 20
+         units: minutes
+
+     - name: set a cron job for repeated tasks
+       cron:
+         name: sample job
+         cron_file: ansbile-job   #/etc/cron.d/
+         job: "uptime >> /tmp/{{ ansible_distribution }}.txt"
+         minute: "*/20"
+         hour: "*"
+         day: "*"
+         month: "3"  #march
+         weekday: "*"
+         user: devops
+         state: present
+
+     - name: set the boot target of the system
+       file:
+         src: /usr/lib/systemd/system/multi-user.target
+         path: /etc/systemd/system/default.target
+         state: link
+
+
+
+[devops@servera project]$ cat storage.yml
+---
+- name: play for paritioning
+  hosts: webserver
+  tasks:
+   #/dev/sdb  parition sdb1 ( 1G ) > PV , VG, LV , ext4 , mounting
+     - name: adding a parition
+       parted:
+          device: /dev/sdb
+          number: 1
+          state: present
+          part_start: 1MiB
+          part_end: 1GiB
+
+  #sdb1  sdb2
+
+     - name: adding second partition
+       parted:
+         device: /dev/sdb
+         number: 2
+         state: present
+         part_start: 1GiB
+         part_end: 1.8GiB
+
+     - name: creating a volume group
+       lvg:
+         vg: myvg
+         pvs: /dev/sdb1,/dev/sdb2
+         state: present
+
+     - name: create logical volume
+       lvol:
+         vg: myvg
+         lv: mylv
+         state: present
+         size: 1.2G
+         #resizefs: true
+
+     - name: assigning file system to logical volume
+       filesystem:
+         fstype: ext4
+         dev: /dev/myvg/mylv
+
+     - name: creating a mount point
+       file:
+         path: /ansible-volume
+         state: directory
+
+     - name: mouting logical volume file system
+       mount:
+         fstype: ext4
+         path: /ansible-volume
+         src: /dev/myvg/mylv
+         state: mounted  # mount for runtime ( permanently )
+         #/dev/myvg/mylv /ansible-volume  ext4  defaults 0 0
+
+
+
+
+[devops@servera project]$ cat storage-using-vars.yml
+---
+- name: play for paritioning
+  hosts: webserver
+  vars:
+    storage:
+      - disk: /dev/sdb
+        number: 1
+        start: 1MiB
+        end: 1GiB
+
+      - disk: /dev/sdb
+        number: 2
+        start: 1GiB
+        end: 1.8GiB
+  tasks:
+   #/dev/sdb  parition sdb1 ( 1G ) > PV , VG, LV , ext4 , mounting
+     - name: adding a parition
+       parted:
+          device: "{{ item.disk }}"
+          number: "{{ item.number }}"
+          state: present
+          part_start: "{{ item.start }}"
+          part_end: "{{ item.end }}"
+       loop: "{{ storage }}"
+
+
+     - name: creating a volume group
+       lvg:
+         vg: myvg
+         pvs: /dev/sdb1,/dev/sdb2
+         state: present
+
+     - name: create logical volume
+       lvol:
+         vg: myvg
+         lv: mylv
+         state: present
+         size: 1.2G
+         resizefs: true
+
+     - name: assigning file system to logical volume
+       filesystem:
+         fstype: ext4
+         dev: /dev/myvg/mylv
+
+     - name: creating a mount point
+       file:
+         path: /ansible-volume
+         state: directory
+
+     - name: mouting logical volume file system
+       mount:
+         fstype: ext4
+         path: /ansible-volume
+         src: /dev/myvg/mylv
+         state: mounted  # mount for runtime ( permanently )
+         #/dev/myvg/mylv /ansible-volume  ext4  defaults 0 0
+
+
+
+[devops@servera project]$ cat network.yml
+---
+- name: play for network connections
+  hosts: webserver
+  tasks:
+    - name: install needed network manager libs
+      yum:
+        name:
+        - NetworkManager-glib
+        - nm-connection-editor
+        - libsemanage-python
+        - policycoreutils-python
+        state: present
+
+    - name: adding a new connection using network manage nmcli
+      nmcli:
+         conn_name: con1
+         dns4: 8.8.8.8
+         gw4: 10.10.10.1
+         ifname: eth1
+         ip4: 10.10.10.0/24
+         state: present
+         type: ethernet
+
+
+
+#Command History:
+
+1173  #Cron Jobs | At > ansible
+ 1174  #system boot targets ansible
+ 1175  vim jobs.yml
+ 1176  sudo ls /var/lib/systemd/random-seed
+ 1177  sudo find / -name multi-user.target
+ 1178  #/usr/lib/systemd/system/multi-user.target
+ 1179  ls /etc/systemd/system
+ 1180  ls /etc/systemd/system/default.target
+ 1181  #/usr/lib/systemd/system/multi-user.target/etc/systemd/system/default.target
+ 1182  vim jobs.yml
+ 1183  ansible-playbook  jobs.yml --syntax-check
+ 1184  ansible-playbook  jobs.yml
+ 1185        vi jobs.yml
+ 1186  ansible-playbook  jobs.yml
+ 1187  sudo systemctl get-default
+ 1188  ansible webserver -a  "systemctl get-default"
+ 1189  cat jobs.yml
+ 1190  clear
+ 1191  #Storage Management
+ 1192  #File system management
+ 1193  #Partitioning
+ 1194  #Partition > Logical Volume > Filesystem > Mounting
+ 1195  #add additional disk to one of the manage node
+ 1196  #serverb ( to attach a disk 2GB )
+ 1197  lsblk
+ 1198  #vm > poweroff state
+ 1199  ansible webserver -a "lsblk"
+ 1200  vim storage.yml
+ 1201  ansible-playbook  storage.yml --syntax-check
+ 1202  vim storage.yml
+ 1203  ansible-playbook  storage.yml --syntax-check
+ 1204  ansible-playbook  storage.yml
+ 1205  ansible webserver -a 'lsblk -f'
+ 1206  ansible webserver -a 'df -hT'
+ 1207  ansible webserver -a 'cat /etc/fstab'
+ 1208  #paritioning ansible ( module )
+ 1209  #ceph > Ansible
+ 1210  #Ceph Cluster ( Daemon ( rpm ) | Containers ) > Ansible
+ 1211  #OSD | MON | MGR | MDS
+ 1212  #docs.redhat.com | provision ( Ansible )
+ 1213  vim storage.yml
+ 1214  ansible-playbook  storage.yml --syntax-check
+ 1215  ansible-playbook  storage.yml
+ 1216  ansible webserver -a 'df -hT'
+ 1217  #600M
+ 1218  ansible webserver -a 'lsblk'
+ 1219  vim storage.yml
+ 1220  cp storage.yml storage-using-vars.yml
+ 1221  vim storage
+ 1222  vim storage.yml
+ 1223  ls | grep storage
+ 1224  vim storage-using-vars.yml
+ 1225  #Network Connections using Ansible
+ 1226  #ansible module ( playbook ) NetworkManager ( nmcli )
+ 1227  #Redhat > System Role ( Network Management )
+ 1228  #pass > variables > playbook
+ 1229  vim network.yml
+ 1230  ansible-playbook  network.yml --syntax-check
+ 1231  cat network.yml
+ 1232  ansible-playbook  network.yml
+ 1233  vim network.yml
+ 1234  ansible-playbook  network.yml --syntax-check
+ 1235  vim network.yml
+ 1236  ansible-playbook  network.yml --syntax-check
+ 1237  ansible-playbook  network.yml
+ 1238  vim network.yml
+ 1239  ansible-playbook  network.yml
+ 1240  vim network.yml
+ 1241  cat network.yml
+ 1242  sudo yum install NetworkManager-glib
+ 1243  sudo yum install nm-connection-editor
+ 1244  sudo yum install libsemanage-python
+ 1245  cat ansible.cfg
+ 1246  rpm -q rhel-system-roles
+ 1247  ls /usr/share/ansible/roles/
+ 1248  ansible-galaxy  list
+ 1249  cd /usr/share/ansible/roles/rhel-system-roles.network
+ 1250  ls
+ 1251  more README.md
+ 1252  cd -
+ 1253  #shell: nmcli con add con-name
+ 1254  cat network.yml
+ 1255  ansible-doc nmcli
+ 1256  #ansible webserver -m lineinfile -a "line=IPV6INIT=false path=/etc/sysconfig/network-scripts/ifcfg-eth0"
+
+
